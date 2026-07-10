@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 import json
+import os
 
 from fastmcp import FastMCP
 
@@ -186,4 +187,16 @@ def resolve_district(query: str) -> str:
 
 
 if __name__ == "__main__":
-    mcp.run()
+    # PORT가 있으면 원격 HTTP(unified-school-mcp 등에서 프록시하기 위함),
+    # 없으면 기존처럼 로컬 stdio(Claude Desktop 등 직접 연결용).
+    port = os.environ.get("PORT")
+    if port:
+        mcp.run(
+            transport="http",
+            host="0.0.0.0",
+            port=int(port),
+            path="/mcp",
+            stateless_http=True,
+        )
+    else:
+        mcp.run()

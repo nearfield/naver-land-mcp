@@ -2,8 +2,10 @@
 
 import os
 
-API_BASE = "https://new.land.naver.com/api"
-MAIN_PAGE_URL = "https://new.land.naver.com/complexes"
+# 2026-07: 네이버가 new.land.naver.com(구 도메인)의 프론트엔드 페이지를 폐기하고
+# neo.land.naver.com으로 이전함(API 경로 구조는 동일, 도메인만 변경).
+API_BASE = "https://neo.land.naver.com/api"
+MAIN_PAGE_URL = "https://neo.land.naver.com/complexes"
 
 USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -15,7 +17,7 @@ BROWSER_HEADERS = {
     "User-Agent": USER_AGENT,
     "Accept": "application/json, text/plain, */*",
     "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
-    "Referer": "https://new.land.naver.com/complexes",
+    "Referer": "https://neo.land.naver.com/complexes",
     "Sec-Fetch-Dest": "empty",
     "Sec-Fetch-Mode": "cors",
     "Sec-Fetch-Site": "same-origin",
