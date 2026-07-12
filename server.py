@@ -16,7 +16,12 @@ import os
 
 from fastmcp import FastMCP
 
-from config import DEFAULT_PRICE_MAX, DEFAULT_PRICE_MIN
+from config import (
+    DEFAULT_PRICE_MAX,
+    DEFAULT_PRICE_MIN,
+    DEFAULT_SEARCH_LIMIT,
+    MAX_SEARCH_LIMIT,
+)
 from filter import filter_and_rank
 from naver_land import (
     _client,
@@ -68,6 +73,7 @@ def search_apartments(
     price_min: int = DEFAULT_PRICE_MIN,
     price_max: int = DEFAULT_PRICE_MAX,
     trade_type: str = "A1",
+    limit: int = DEFAULT_SEARCH_LIMIT,
 ) -> str:
     """지역 + 가격 범위로 아파트 매물을 검색합니다. 전국 + 매매/전세/월세 모두 지원.
 
@@ -75,6 +81,10 @@ def search_apartments(
     - 동 단위: "관평동", "개포동", "반포동"
     - 구/군 단위: "강남구", "유성구", "성남시 분당구"
     - 시/도 단위(예: "서울시")는 범위 과대로 거부됨
+
+    매물이 많은 지역은 매물 수가 많은 단지부터 우선 수집하며,
+    limit 충족 시 조기 종료합니다. 특정 단지의 매물만 보려면
+    가격 범위를 좁히거나 단지명으로 get_complex_price_info를 사용하세요.
 
     Args:
         district: 조회할 지역명 (동/구/군). 예: "관평동", "강남구", "성남시 분당구"
@@ -84,17 +94,33 @@ def search_apartments(
             A1 = 매매 (기본)
             B1 = 전세
             B2 = 월세 (응답에 rentPrice 포함)
+        limit: 반환할 최대 매물 수 (기본 30, 최대 100)
 
     반환 JSON의 각 매물에는 tradeType, tradeTypeName, price, rentPrice 필드가 포함됩니다.
     월세의 경우 price는 보증금, rentPrice는 월세(만원/월)입니다.
+    같은 물건을 여러 중개사가 올린 중복 매물은 하나로 묶여 반환됩니다.
     """
-    raw = crawl_district(district, price_min, price_max, trade_type)
+    limit = max(1, min(limit, MAX_SEARCH_LIMIT))
+    raw, meta = crawl_district(district, price_min, price_max, trade_type, limit=limit)
     items = filter_and_rank(raw, price_min=price_min, price_max=price_max)
-    return json.dumps(
-        {"district": district, "count": len(items), "items": items},
-        ensure_ascii=False,
-        indent=2,
+    truncated = len(items) > limit or meta["timeExceeded"] or (
+        meta["complexesScanned"] < meta["complexesTotal"]
     )
+    payload = {
+        "district": meta.get("regionName", district),
+        "returned": min(len(items), limit),
+        "collected": len(items),
+        "complexesScanned": meta["complexesScanned"],
+        "complexesWithListings": meta["complexesTotal"],
+        "truncated": truncated,
+        "items": items[:limit],
+    }
+    if truncated:
+        payload["note"] = (
+            "매물 수 상위 단지부터 수집하다 한도에 도달해 일부만 반환했습니다. "
+            "가격 범위를 좁히거나 동 단위로 지역을 좁혀 다시 검색하세요."
+        )
+    return json.dumps(payload, ensure_ascii=False, indent=1)
 
 
 @mcp.tool
@@ -112,6 +138,11 @@ def get_complex_info(
     """
     if not complex_id and complex_name:
         complex_id = search_complex_by_name(complex_name)
+        if not complex_id:
+            return json.dumps(
+                {"error": f"단지를 찾을 수 없음: {complex_name} — 정확한 단지명 또는 complex_id로 다시 시도하세요."},
+                ensure_ascii=False,
+            )
     if not complex_id:
         return json.dumps(
             {"error": "complex_id 또는 complex_name을 입력하세요."},
@@ -138,6 +169,11 @@ def get_complex_price_info(
     """
     if not complex_id and complex_name:
         complex_id = search_complex_by_name(complex_name)
+        if not complex_id:
+            return json.dumps(
+                {"error": f"단지를 찾을 수 없음: {complex_name} — 정확한 단지명 또는 complex_id로 다시 시도하세요."},
+                ensure_ascii=False,
+            )
     if not complex_id:
         return json.dumps(
             {"error": "complex_id 또는 complex_name을 입력하세요."},

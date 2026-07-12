@@ -15,6 +15,7 @@ import requests
 from config import (
     API_BASE,
     BROWSER_HEADERS,
+    CRAWL_TIME_BUDGET_SEC,
     DEFAULT_MAX_COMPLEXES,
     MAIN_PAGE_URL,
     MAX_RETRIES,
@@ -107,25 +108,46 @@ class NaverLandClient:
         )
         return data.get("complexList", [])
 
-    def get_articles(self, complex_no: str, trade_type: str = "A1") -> list[dict]:
-        """단지 번호 → 매물 목록 (페이지 전체 수집)."""
+    def get_articles(
+        self,
+        complex_no: str,
+        trade_type: str = "A1",
+        price_min: Optional[int] = None,
+        price_max: Optional[int] = None,
+        max_pages: int = 20,
+        same_address_group: bool = False,
+    ) -> list[dict]:
+        """단지 번호 → 매물 목록 (페이지 수집).
+
+        price_min/price_max(만원)를 네이버 API에 직접 전달해 서버측에서
+        필터링한다 — 전체를 긁은 뒤 사후 필터링하면 대단지에서 페이지 수가
+        폭증해 타임아웃 원인이 된다. same_address_group=True면 같은 물건을
+        여러 중개사가 올린 중복 매물을 하나로 묶는다.
+        """
+        params_base: dict = {
+            "tradeType": trade_type,
+            "order": "rank",
+        }
+        if price_min is not None and price_min > 0:
+            params_base["priceMin"] = str(price_min)
+        if price_max is not None and price_max < 999999:
+            params_base["priceMax"] = str(price_max)
+        if same_address_group:
+            params_base["sameAddressGroup"] = "true"
+
         all_articles: list[dict] = []
         page = 1
         while True:
             data = self._get(
                 f"/articles/complex/{complex_no}",
-                {
-                    "tradeType": trade_type,
-                    "order": "rank",
-                    "page": str(page),
-                },
+                {**params_base, "page": str(page)},
             )
             batch = data.get("articleList", []) or []
             all_articles.extend(batch)
             if not data.get("isMoreData") or not batch:
                 break
             page += 1
-            if page > 20:  # 안전장치
+            if page > max_pages:  # 안전장치
                 break
             time.sleep(REQUEST_DELAY_SEC)
         return all_articles
@@ -284,8 +306,8 @@ def get_complexes(dong_code: str) -> list[dict]:
     return _client.get_complexes(dong_code)
 
 
-def get_articles(complex_no: str, trade_type: str = "A1") -> list[dict]:
-    return _client.get_articles(complex_no, trade_type)
+def get_articles(complex_no: str, trade_type: str = "A1", **kwargs) -> list[dict]:
+    return _client.get_articles(complex_no, trade_type, **kwargs)
 
 
 def get_complex_detail(complex_no: str) -> dict:
@@ -326,8 +348,14 @@ def watch_complexes_data(
 
         time.sleep(REQUEST_DELAY_SEC)
 
-        # 매물 조회 + 필터링
-        articles = _client.get_articles(complex_no, trade_type)
+        # 매물 조회 + 필터링 (가격 필터는 API에 직접 전달해 페이지 수 절감)
+        articles = _client.get_articles(
+            complex_no,
+            trade_type,
+            price_min=price_min,
+            price_max=price_max,
+            same_address_group=True,
+        )
         for a in articles:
             a["_complexNo"] = complex_no
             a["_complexName"] = name
@@ -421,7 +449,8 @@ def crawl_district(
     price_min: int,
     price_max: int,
     trade_type: str = "A1",
-) -> list[dict]:
+    limit: Optional[int] = None,
+) -> tuple[list[dict], dict]:
     """지역 내 매물 수집. 동/구/시 단위 자동 감지.
 
     지원 형식:
@@ -432,8 +461,14 @@ def crawl_district(
     흐름:
     1. 네이버 search API로 cortarNo 조회
     2. cortarType 분기: sec(동) → 직접 단지 조회 / dvsn(구) → 동 순회
-    3. 매물 수 내림차순 상위 N개 단지만 상세 수집
+    3. 매물 수 내림차순 상위 단지부터, 가격 필터를 API에 전달해 수집
+    4. limit 충족 또는 시간 예산(CRAWL_TIME_BUDGET_SEC) 소진 시 조기 종료
+
+    Returns:
+        (articles, meta) — meta에 수집 범위/조기종료 여부가 담긴다.
     """
+    deadline = time.monotonic() + CRAWL_TIME_BUDGET_SEC
+
     region = resolve_region(district)
     if not region:
         raise ValueError(f"지역을 찾을 수 없음: {district}")
@@ -467,6 +502,8 @@ def crawl_district(
         dongs = _client.get_dong_list(cortar_no)
         dongs = [d for d in dongs if d.get("cortarType") == "sec"]
         for dong in dongs:
+            if time.monotonic() > deadline:
+                break
             dong_code = dong.get("cortarNo")
             dong_name = dong.get("cortarName")
             if not dong_code:
@@ -482,15 +519,36 @@ def crawl_district(
     all_complexes.sort(key=lambda c: c.get(deal_key, 0), reverse=True)
 
     results: list[dict] = []
+    scanned = 0
+    time_exceeded = False
     for cx in all_complexes[:max_total]:
+        if time.monotonic() > deadline:
+            time_exceeded = True
+            break
+        if limit is not None and len(results) >= limit:
+            break
         cno = cx.get("complexNo")
         if not cno:
             continue
         time.sleep(REQUEST_DELAY_SEC)
+        # 필요한 만큼만 페이지 수집 (페이지당 약 20건)
+        if limit is not None:
+            remaining = limit - len(results)
+            max_pages = max(1, -(-remaining // 20) + 1)
+        else:
+            max_pages = 20
         try:
-            articles = _client.get_articles(cno, trade_type)
+            articles = _client.get_articles(
+                cno,
+                trade_type,
+                price_min=price_min,
+                price_max=price_max,
+                max_pages=max_pages,
+                same_address_group=True,
+            )
         except RuntimeError:
             continue
+        scanned += 1
         for a in articles:
             a["_complexNo"] = cno
             a["_complexName"] = cx.get("complexName")
@@ -498,4 +556,10 @@ def crawl_district(
             a["_cortarAddress"] = cx.get("cortarAddress")
             results.append(a)
 
-    return results
+    meta = {
+        "regionName": region_name,
+        "complexesTotal": len(all_complexes),
+        "complexesScanned": scanned,
+        "timeExceeded": time_exceeded,
+    }
+    return results, meta

@@ -37,6 +37,16 @@ SNAPSHOT_PATH = os.path.join(SNAPSHOT_DIR, "snapshot.json")
 # crawl_district 한 번에 처리할 최대 단지 수. dealCount 내림차순으로 선택.
 DEFAULT_MAX_COMPLEXES = 5
 
+# search_apartments 응답 매물 수 기본/최대치.
+# 무제한 반환 시 대형 지역(개포동 2,500건+)에서 응답이 수백만 자가 되어
+# MCP 클라이언트 토큰 한도를 넘기므로 반드시 상한을 둔다.
+DEFAULT_SEARCH_LIMIT = 30
+MAX_SEARCH_LIMIT = 100
+
+# crawl_district 전체 수집 시간 예산(초). MCP 클라이언트 타임아웃(60초)보다
+# 여유 있게 짧아야 한다 — 초과 시 그때까지 모은 부분 결과를 반환한다.
+CRAWL_TIME_BUDGET_SEC = 35.0
+
 # 가격 기본 범위 (만원 단위) — 가격 명시 안 한 호출 시 전 범위 검색
 DEFAULT_PRICE_MIN = 0
 DEFAULT_PRICE_MAX = 999999
