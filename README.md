@@ -75,7 +75,7 @@ MCP 클라이언트의 설정 예시입니다. 실제 설치 경로로 바꾸세
 
 검증 결과 `passed`, `failed`, `blocked`를 구분하며 종료 코드는 각각 0, 1, 2입니다. 결과에는 소스 해시·검증 시각·검증 항목이 포함되며 실제 매물 원문·인증정보는 저장하지 않습니다. 실행 결과는 `.verification/`에서 현재 파일만 유지하고 Git에 포함하지 않습니다.
 
-2026-10-03 개발 환경(Python 3.12)에서 전체 실시간 검증을 통과했습니다. API는 이후 바뀌거나 제한될 수 있습니다. GitHub Actions의 Python 3.10·3.12·3.13 실행 설정은 포함했으며, 원격 CI 실행 여부는 별도 확인해야 합니다. [검증 설계와 재현 기준](docs/testing.md).
+2026-10-03 개발 환경(Python 3.12)에서 전체 실시간 검증을 통과했습니다. API는 이후 바뀌거나 제한될 수 있습니다. GitHub Actions는 Python 3.10·3.12·3.13에서 같은 기본 검증을 실행합니다. [원격 자동 검증 결과](https://github.com/nearfield/naver-land-mcp/actions/workflows/tests.yml) · [검증 설계와 재현 기준](docs/testing.md).
 
 ## 제한과 데이터 해석
 
