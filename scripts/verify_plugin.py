@@ -18,6 +18,12 @@ ROOT = Path(__file__).resolve().parents[1]
 
 async def verify(root):
     manifest = json.loads((root / "plugin.json").read_text(encoding="utf-8"))
+    compatibility = json.loads(
+        (root / ".codex-plugin/plugin.json").read_text(encoding="utf-8")
+    )
+    assert compatibility["name"] == manifest["name"]
+    assert compatibility["version"] == manifest["version"]
+    assert compatibility["interface"] == manifest["extensions"]["com.openai"]["interface"]
     marketplace = json.loads(
         (root / ".agents/plugins/marketplace.json").read_text(encoding="utf-8")
     )

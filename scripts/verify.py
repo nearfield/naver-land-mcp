@@ -46,7 +46,7 @@ def source_digest():
         + list((ROOT / "tests/fixtures").glob("*.json"))
         + [ROOT / name for name in (
             "pyproject.toml", "requirements.txt", "uv.lock", "plugin.json",
-            "mcp.json", ".agents/plugins/marketplace.json",
+            "mcp.json", ".agents/plugins/marketplace.json", ".codex-plugin/plugin.json",
         )]
     )
     for path in sorted(paths):
