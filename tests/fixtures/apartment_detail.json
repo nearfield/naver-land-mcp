@@ -1,0 +1,37 @@
+{
+  "articleDetail": {
+    "articleNo": "9000000003",
+    "realestateTypeCode": "APT",
+    "tradeTypeCode": "B2",
+    "monthlyManagementCost": 0,
+    "articleConfirmYMD": "20261002",
+    "parkingPossibleYN": "Y"
+  },
+  "articleAddition": {
+    "articleNo": "9000000003",
+    "realEstateTypeCode": "APT",
+    "tradeTypeCode": "B2",
+    "area1": 124,
+    "area2": 96,
+    "floorInfo": "고/16",
+    "rentPrc": "680",
+    "dealOrWarrantPrc": "1억",
+    "articleConfirmYmd": "20261002"
+  },
+  "articleFacility": {},
+  "articleFloor": {
+    "correspondingFloorCount": "고",
+    "floorTypeCode": "10",
+    "floorInputMethodCode": "20",
+    "totalFloorCount": "16"
+  },
+  "articleSpace": {
+    "supplySpace": 124.23,
+    "exclusiveSpace": 96.95
+  },
+  "articlePrice": {
+    "rentPrice": 680,
+    "warrantPrice": 10000
+  },
+  "articlePhotos": []
+}

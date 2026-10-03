@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import re
 import time
+import threading
 from typing import Any, Optional
 
 import requests
@@ -18,14 +19,29 @@ from config import (
     CRAWL_TIME_BUDGET_SEC,
     DEFAULT_MAX_COMPLEXES,
     MAIN_PAGE_URL,
-    MAX_RETRIES,
     REQUEST_DELAY_SEC,
     REQUEST_TIMEOUT_SEC,
-    RETRY_DELAY_SEC,
     USER_AGENT,
 )
 
 _JWT_PATTERN = re.compile(r"eyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+")
+
+
+class AccessRestrictedError(RuntimeError):
+    """접근 제한은 빈 매물 목록으로 처리하거나 자동 재시도하지 않는다."""
+
+
+class ResponseSchemaError(RuntimeError):
+    """Expected upstream contract changed; never silently treat it as zero results."""
+
+
+def check_access(response) -> None:
+    if response.status_code in (401, 403, 429) or 300 <= response.status_code < 400:
+        raise AccessRestrictedError(f"네이버 접근 제한/리다이렉트(HTTP {response.status_code}). 자동 재시도를 중단합니다.")
+    if "text/html" in response.headers.get("Content-Type", "") and any(
+        token in response.text.lower() for token in ("captcha", "서비스 이용이 제한", "비정상적인 접근")
+    ):
+        raise AccessRestrictedError("네이버 접근 제한/CAPTCHA 응답. 자동 재시도를 중단합니다.")
 
 
 class NaverLandClient:
@@ -34,6 +50,13 @@ class NaverLandClient:
     def __init__(self) -> None:
         self._session: Optional[requests.Session] = None
         self._jwt: Optional[str] = None
+        self._request_lock = threading.RLock()
+        self._last_request = 0.0
+        self._access_restricted = False
+
+    def _pause(self) -> None:
+        time.sleep(max(0, 1.0 - (time.monotonic() - self._last_request)))
+        self._last_request = time.monotonic()
 
     def _ensure_session(self) -> None:
         """Session + JWT 확보. 최초 호출 시 메인 페이지에서 토큰 추출."""
@@ -44,7 +67,9 @@ class NaverLandClient:
             "User-Agent": USER_AGENT,
             "Accept-Language": "ko-KR,ko;q=0.9",
         })
-        r = sess.get(MAIN_PAGE_URL, timeout=REQUEST_TIMEOUT_SEC)
+        self._pause()
+        r = sess.get(MAIN_PAGE_URL, timeout=REQUEST_TIMEOUT_SEC, allow_redirects=False)
+        check_access(r)
         r.raise_for_status()
         tokens = _JWT_PATTERN.findall(r.text)
         if not tokens:
@@ -60,38 +85,54 @@ class NaverLandClient:
         }
 
     def _get(self, path: str, params: Optional[dict] = None) -> dict:
-        """Rate limiting + 429 재시도 포함 GET 요청."""
-        self._ensure_session()
-        assert self._session is not None
-
-        url = f"{API_BASE}{path}"
-        last_exc: Optional[Exception] = None
-
-        for attempt in range(MAX_RETRIES):
+        """요청 간 1초. 접근 제한은 같은 서버 실행에서 추가 호출도 중단한다."""
+        with self._request_lock:
+            if self._access_restricted:
+                raise AccessRestrictedError("앞선 네이버 접근 제한으로 추가 요청을 중단했습니다. 수동 확인 후 서버를 다시 실행하세요.")
             try:
+                self._ensure_session()
+                assert self._session is not None
+                self._pause()
                 resp = self._session.get(
-                    url,
+                    f"{API_BASE}{path}",
                     params=params,
                     headers=self._headers(),
                     timeout=REQUEST_TIMEOUT_SEC,
+                    allow_redirects=False,
                 )
-                if resp.status_code == 429:
-                    time.sleep(RETRY_DELAY_SEC)
-                    continue
+                check_access(resp)
                 resp.raise_for_status()
-                data = resp.json()
+                try:
+                    data = resp.json()
+                except ValueError:
+                    raise ResponseSchemaError(f"{path} JSON 응답 형식 오류.") from None
+                if not isinstance(data, dict):
+                    raise ResponseSchemaError(f"{path} 응답이 JSON 객체가 아닙니다.")
                 # 네이버 API는 200이어도 error 필드를 반환할 수 있음
                 if isinstance(data, dict) and data.get("error"):
                     err = data["error"]
+                    code = str(err.get("code", "")) if isinstance(err, dict) else ""
+                    if code.upper() in {"401", "403", "429", "CAPTCHA", "TOO_MANY_REQUESTS", "ACCESS_DENIED"}:
+                        raise AccessRestrictedError("네이버 API 접근 제한 응답. 자동 재시도를 중단합니다.")
                     raise RuntimeError(
-                        f"API 오류 {err.get('code')}: {err.get('message')} (path={path})"
+                        f"API 오류 응답 (path={path}); 결과를 매물 없음으로 처리하지 않습니다."
                     )
                 return data
+            except AccessRestrictedError:
+                self._access_restricted = True
+                raise
             except requests.RequestException as e:
-                last_exc = e
-                time.sleep(RETRY_DELAY_SEC)
+                raise RuntimeError(f"{path} 요청 실패 ({type(e).__name__}). 자동 재시도하지 않습니다.") from None
+            except ValueError:
+                raise ResponseSchemaError(f"{path} JSON 응답 형식 오류. 매물 없음으로 처리하지 않습니다.") from None
 
-        raise RuntimeError(f"{path} 요청 실패 (재시도 {MAX_RETRIES}회 소진): {last_exc}")
+    def close(self) -> None:
+        """Release the session without persisting credentials or clearing a denial."""
+        with self._request_lock:
+            if self._session is not None:
+                self._session.close()
+            self._session = None
+            self._jwt = None
 
     # ---- 공개 API ----
 
@@ -106,7 +147,9 @@ class NaverLandClient:
             "/regions/complexes",
             {"cortarNo": dong_code, "realEstateType": "APT", "order": ""},
         )
-        return data.get("complexList", [])
+        if not isinstance(data.get("complexList"), list):
+            raise ResponseSchemaError("아파트 단지 목록 응답 형식이 달라 검색을 중단했습니다.")
+        return data["complexList"]
 
     def get_articles(
         self,
@@ -142,7 +185,13 @@ class NaverLandClient:
                 f"/articles/complex/{complex_no}",
                 {**params_base, "page": str(page)},
             )
-            batch = data.get("articleList", []) or []
+            batch = data.get("articleList")
+            if not isinstance(batch, list) or not isinstance(data.get("isMoreData"), bool):
+                raise ResponseSchemaError("아파트 목록 응답 형식이 달라 검색을 중단했습니다.")
+            if any(not isinstance(a, dict) or not a.get("articleNo") for a in batch):
+                raise ResponseSchemaError("아파트 목록에 매물번호 없는 항목이 있습니다.")
+            if data["isMoreData"] and not batch:
+                raise ResponseSchemaError("아파트 목록의 페이지 상태와 빈 응답이 모순됩니다.")
             all_articles.extend(batch)
             if not data.get("isMoreData") or not batch:
                 break
@@ -224,6 +273,8 @@ class NaverLandClient:
                             entry["kbPriceBasis"] = table.get(
                                 "marketPriceBasisYearMonthDay", ""
                             )
+                except AccessRestrictedError:
+                    raise
                 except RuntimeError:
                     pass
 
@@ -249,6 +300,8 @@ class NaverLandClient:
                         })
                     deals.reverse()
                     entry["realDeals"] = deals[:5]
+            except AccessRestrictedError:
+                raise
             except RuntimeError:
                 pass
 
@@ -403,6 +456,8 @@ def watch_complexes_data(
                                 entry["marketPriceBasis"] = table.get("marketPriceBasisYearMonthDay", "")
                             else:
                                 entry["kbPriceBasis"] = table.get("marketPriceBasisYearMonthDay", "")
+                    except AccessRestrictedError:
+                        raise
                     except RuntimeError:
                         pass
                 # 실거래가
@@ -423,6 +478,8 @@ def watch_complexes_data(
                             deals.append({"date": x_list[i], "price": y_list[i], "floor": floor})
                         deals.reverse()
                         entry["realDeals"] = deals[:3]
+                except AccessRestrictedError:
+                    raise
                 except RuntimeError:
                     pass
             representative_pyeong.append(entry)
@@ -520,6 +577,7 @@ def crawl_district(
 
     results: list[dict] = []
     scanned = 0
+    lookup_failures = 0
     time_exceeded = False
     for cx in all_complexes[:max_total]:
         if time.monotonic() > deadline:
@@ -534,7 +592,7 @@ def crawl_district(
         # 필요한 만큼만 페이지 수집 (페이지당 약 20건)
         if limit is not None:
             remaining = limit - len(results)
-            max_pages = max(1, -(-remaining // 20) + 1)
+            max_pages = max(1, -(-remaining // 20))
         else:
             max_pages = 20
         try:
@@ -546,7 +604,10 @@ def crawl_district(
                 max_pages=max_pages,
                 same_address_group=True,
             )
+        except (AccessRestrictedError, ResponseSchemaError):
+            raise
         except RuntimeError:
+            lookup_failures += 1
             continue
         scanned += 1
         for a in articles:
@@ -556,10 +617,13 @@ def crawl_district(
             a["_cortarAddress"] = cx.get("cortarAddress")
             results.append(a)
 
+    if lookup_failures and not results:
+        raise RuntimeError("아파트 목록 조회가 실패했습니다. 매물 없음으로 처리하지 않습니다.")
     meta = {
         "regionName": region_name,
         "complexesTotal": len(all_complexes),
         "complexesScanned": scanned,
         "timeExceeded": time_exceeded,
+        "lookupFailures": lookup_failures,
     }
     return results, meta

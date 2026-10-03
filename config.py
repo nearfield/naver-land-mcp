@@ -24,9 +24,9 @@ BROWSER_HEADERS = {
 }
 
 # Rate limiting
-REQUEST_DELAY_SEC = 0.5       # 요청 간 최소 딜레이
-RETRY_DELAY_SEC = 5.0         # 429 시 재시도 대기
-MAX_RETRIES = 3
+REQUEST_DELAY_SEC = 1.0       # 기존 수집 루프 딜레이; 클라이언트도 최소 1초 보장
+RETRY_DELAY_SEC = 5.0         # 원본 호환 상수. 로컬 확장에서는 자동 재시도 없음
+MAX_RETRIES = 1              # 원본 호환 상수. 접근 제한은 즉시 중단
 REQUEST_TIMEOUT_SEC = 10
 
 # 스냅샷 저장 경로 (변동 감지용)

@@ -1,49 +1,19 @@
 # 네이버 부동산 API 레퍼런스
 
-네이버는 부동산 API를 공식 제공하지 않는다. 웹 프론트엔드에서 내부적으로 호출하는 API를 사용한다.
+이 프로젝트는 네이버가 공식 제공·보장하는 공개 API가 아닌 내부 웹 조회 경로를 사용한다. 로컬 기반 주소는 `https://neo.land.naver.com/api`다.
 
-## 주요 엔드포인트 (new.land.naver.com)
+| 경로 | 용도 | 이 환경의 검증 상태 |
+|---|---|---|
+| `/regions/list?cortarNo=...` | 지역 목록 | 2026-10-03 HTTP200 확인 |
+| `/search?keyword=...` | 지역명 조회 | 2026-10-03 개포동 조회 확인 |
+| `/regions/complexes?cortarNo=...&realEstateType=APT` | 아파트 단지 | 2026-10-03 확인 |
+| `/articles/complex/{complexNo}` | 단지 매물 | 2026-10-03 B2 1페이지 확인 |
+| `/complexes/{complexNo}` | 단지 상세 | 이번 테스트에서 실제 응답 미검증 |
+| `/articles?cortarNo=...&realEstateType=SMS:SG&tradeType=B2` | 작업실용 상가·사무실 | 2026-10-03 실제 MCP 조회 확인 |
+| `/articles/{articleNo}` | 광고 상세·공개 사진 URL | 2026-10-03 실제 MCP 조회 확인 |
 
-| 단계 | 엔드포인트 | 설명 |
-|------|-----------|------|
-| 1 | `/api/regions/list?cortarNo={code}` | 시도 → 구/군 → 동 목록 |
-| 2 | `/api/regions/complexes?cortarNo={dong}&realEstateType=APT` | 동별 아파트 단지 목록 |
-| 3 | `/api/articles?complexNo={id}&tradeType=A1` | 단지별 매매 매물 목록 |
-| 4 | `/api/complexes/{id}` | 단지 상세 정보 |
+작업실 조건은 [별도 사양](studio-research.md)에 정의한다. 기존 `search_apartments`의 월세 거래 `price_min/max`는 보증금 기준이며 새 `search_studio_spaces.monthly_rent_lt`만 월세 상한으로 쓴다.
 
-## Fallback 엔드포인트 (m.land.naver.com)
+세션은 공개 페이지에서 제공되는 토큰을 메모리 안에서만 사용한다. 사용자 로그인 쿠키·비밀번호를 가져오거나 토큰을 파일에 저장하지 않는다. 원본의 클라이언트 헤더는 유지하며 접근 제한을 피하기 위해 바꾸지 않는다.
 
-new.land API가 실패할 경우, 모바일 버전 API로 fallback한다.
-좌표 기반 검색이라 지역 코드 대신 위도/경도 범위를 사용한다.
-
-```
-m.land.naver.com/cluster/ajax/articleList?rletTpCd=APT&tradTpCd=A1&dprcMin=60000&dprcMax=79999&...
-```
-
-## 필수 헤더
-
-네이버 내부 API는 적절한 헤더 없이 호출하면 **차단**된다.
-
-```python
-HEADERS = {
-    "Host": "new.land.naver.com",
-    "Referer": "https://new.land.naver.com/complexes",
-    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-}
-```
-
-## 주요 파라미터 코드
-
-| 파라미터 | 값 | 의미 |
-|---------|---|------|
-| rletTpCd / realEstateType | APT | 아파트 |
-| tradTpCd / tradeType | A1 | 매매 (B1=전세, B2=월세) |
-| cortarNo | 1168000000 | 법정동 코드 (예: 강남구) |
-| dprcMin / dprcMax | 60000 / 79999 | 매매가 범위 (만원 단위, 6억~7.9억) |
-
-## Rate Limiting 규칙
-
-- 요청 간 **최소 1초** 딜레이 필수
-- 429 응답 시 **5초 대기** 후 재시도 (최대 3회)
-- 하루 1~2회 크롤링 권장 (아침 8시 + 저녁 6시)
-- 구 간 **2초** 딜레이로 rate limiting 방지
+로컬 버전은 요청 시작 간 최소 1초 간격, 자동 재시도 없음이다. 401·403·429·리다이렉트·CAPTCHA에서는 같은 서버 실행의 후속 호출도 중단한다. 다른 호스트나 모바일 경로로 차단을 우회하는 fallback은 구현하지 않는다. 오류나 응답 구조 변경을 매물 없음으로 처리하지 않는다.

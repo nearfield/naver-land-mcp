@@ -4,3 +4,10 @@ __pycache__/
 .venv/
 .python-version
 .claude/
+.verification/
+.private/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+coverage.xml

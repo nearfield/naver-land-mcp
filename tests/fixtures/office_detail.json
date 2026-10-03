@@ -1,0 +1,42 @@
+{
+  "articleDetail": {
+    "articleNo": "9000000001",
+    "realestateTypeCode": "SMS",
+    "tradeTypeCode": "B2",
+    "monthlyManagementCost": 60000,
+    "articleConfirmYMD": "20261002",
+    "parkingPossibleYN": "Y"
+  },
+  "articleAddition": {
+    "articleNo": "9000000001",
+    "realEstateTypeCode": "SMS",
+    "tradeTypeCode": "B2",
+    "area1": 115,
+    "area2": 114,
+    "floorInfo": "3/5",
+    "rentPrc": "150",
+    "dealOrWarrantPrc": "2,000",
+    "articleConfirmYmd": "20261002"
+  },
+  "articleFacility": {
+    "buildingUseAprvYmd": "19900704"
+  },
+  "articleFloor": {
+    "correspondingFloorCount": "3",
+    "floorTypeCode": "00",
+    "floorInputMethodCode": "00",
+    "totalFloorCount": "5"
+  },
+  "articleSpace": {
+    "supplySpace": 115.0,
+    "exclusiveSpace": 114.75
+  },
+  "articlePrice": {
+    "rentPrice": 150,
+    "warrantPrice": 2000
+  },
+  "articleBuildingRegister": {
+    "totalElvtCnt": 0
+  },
+  "articlePhotos": []
+}

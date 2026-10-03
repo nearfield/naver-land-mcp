@@ -1,0 +1,71 @@
+{
+  "articleDetail": {
+    "articleNo": "9000000002",
+    "realestateTypeCode": "SMS",
+    "tradeTypeCode": "B2",
+    "monthlyManagementCost": 170000,
+    "articleConfirmYMD": "20260928",
+    "parkingPossibleYN": "Y"
+  },
+  "articleAddition": {
+    "articleNo": "9000000002",
+    "realEstateTypeCode": "SMS",
+    "tradeTypeCode": "B2",
+    "area1": 134,
+    "area2": 56,
+    "floorInfo": "2/5",
+    "rentPrc": "140",
+    "dealOrWarrantPrc": "2,000",
+    "articleConfirmYmd": "20260928"
+  },
+  "articleFacility": {
+    "buildingUseAprvYmd": "19910829"
+  },
+  "articleFloor": {
+    "correspondingFloorCount": "2",
+    "floorTypeCode": "00",
+    "floorInputMethodCode": "00",
+    "totalFloorCount": "5"
+  },
+  "articleSpace": {
+    "supplySpace": 134.38,
+    "exclusiveSpace": 56.2
+  },
+  "articlePrice": {
+    "rentPrice": 140,
+    "warrantPrice": 2000
+  },
+  "articleBuildingRegister": {
+    "totalElvtCnt": 0
+  },
+  "articlePhotos": [
+    {
+      "imageSrc": "/sanitized/sample-0.jpg",
+      "imageOrder": 5
+    },
+    {
+      "imageSrc": "/sanitized/sample-1.jpg",
+      "imageOrder": 5
+    },
+    {
+      "imageSrc": "/sanitized/sample-2.jpg",
+      "imageOrder": 5
+    },
+    {
+      "imageSrc": "/sanitized/sample-3.jpg",
+      "imageOrder": 5
+    },
+    {
+      "imageSrc": "/sanitized/sample-4.jpg",
+      "imageOrder": 5
+    },
+    {
+      "imageSrc": "/sanitized/sample-5.jpg",
+      "imageOrder": 5
+    },
+    {
+      "imageSrc": "/sanitized/sample-6.jpg",
+      "imageOrder": 5
+    }
+  ]
+}

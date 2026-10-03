@@ -1,0 +1,65 @@
+{
+  "articleList": [
+    {
+      "realEstateTypeCode": "SMS",
+      "tradeTypeCode": "B2",
+      "floorInfo": "3/5",
+      "area1": 115,
+      "area2": 114,
+      "rentPrc": "150",
+      "dealOrWarrantPrc": "2,000",
+      "articleConfirmYmd": "20261002",
+      "siteImageCount": 0,
+      "articleNo": "9000000010"
+    },
+    {
+      "realEstateTypeCode": "SMS",
+      "tradeTypeCode": "B2",
+      "floorInfo": "2/5",
+      "area1": 75,
+      "area2": 66,
+      "rentPrc": "140",
+      "dealOrWarrantPrc": "1,500",
+      "articleConfirmYmd": "20261002",
+      "siteImageCount": 0,
+      "articleNo": "9000000011"
+    },
+    {
+      "realEstateTypeCode": "SG",
+      "tradeTypeCode": "B2",
+      "floorInfo": "B1/10",
+      "area1": 57,
+      "area2": 22,
+      "rentPrc": "80",
+      "dealOrWarrantPrc": "1,000",
+      "articleConfirmYmd": "20261002",
+      "siteImageCount": 0,
+      "articleNo": "9000000012"
+    },
+    {
+      "realEstateTypeCode": "SMS",
+      "tradeTypeCode": "B2",
+      "floorInfo": "5/7",
+      "area1": 66,
+      "area2": 39,
+      "rentPrc": "110",
+      "dealOrWarrantPrc": "2,000",
+      "articleConfirmYmd": "20261002",
+      "siteImageCount": 0,
+      "articleNo": "9000000013"
+    },
+    {
+      "realEstateTypeCode": "SG",
+      "tradeTypeCode": "B2",
+      "floorInfo": "3/4",
+      "area1": 118,
+      "area2": 35,
+      "rentPrc": "80",
+      "dealOrWarrantPrc": "2,000",
+      "articleConfirmYmd": "20261002",
+      "siteImageCount": 0,
+      "articleNo": "9000000014"
+    }
+  ],
+  "isMoreData": true
+}

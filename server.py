@@ -1,6 +1,11 @@
 """naver-land-mcp FastMCP 서버.
 
-도구 6개 (네이버 부동산 API 기반, 전국 지원):
+도구 11개 (기존 아파트 도구 + 작업실 조사 + 공통 상세·사진):
+- get_article_detail: 모든 매물 유형의 광고 상세 조회
+- get_article_photos: 모든 매물 유형의 공개 사진 URL 조회
+- search_studio_spaces: 동 단위 상가·사무실 월세 광고 검색
+- get_studio_article: 매물 상세·공개 사진 URL 조회
+- review_studio_articles: 저장된 광고 JSON의 작업실 조건 검토
 - watch_complexes: 관심 단지 매물+시세(한국부동산원+KB)+실거래가 일괄 조회
 - search_apartments: 동/구/군 + 가격 범위로 매물 검색 (매매/전세/월세)
 - get_complex_info: 단지 상세 정보
@@ -34,8 +39,88 @@ from naver_land import (
 )
 from report import format_report
 from snapshot import compare_with_previous
+from studio import evaluate_articles, get_studio_detail, search_studio
+from articles import get_article_detail as fetch_article_detail
 
 mcp = FastMCP("naver-land")
+
+
+@mcp.tool
+def search_studio_spaces(
+    district: str = "개포동", monthly_rent_lt: float = 150,
+    min_area_pyeong: float = 15, max_area_pyeong: float = 25,
+    min_floor: int = 2, deposit_max: float | None = None,
+    limit: int = 30, max_pages: int = 2,
+    center_lat: float | None = None, center_lon: float | None = None,
+    detail_limit: int = 5,
+) -> str:
+    """동 단위 상가(SG)·사무실(SMS) 월세 광고를 작업실 조건으로 조사합니다.
+
+    기본 월세는 150만원 '미만', 광고상 전용 15~25평, 지상 2층 이상.
+    보증금 무제한. 주차·엘리베이터·연식으로 제외하지 않습니다.
+    within10YearsPreferred는 연식 선호 표시이며, 음악 사용 허가가 아닙니다.
+    기준 좌표를 함께 입력하면 수집된 광고를 직선거리 우선으로 정렬합니다.
+    max_pages는 1~3, 각 분류의 반환 limit은 1~100. detail_limit은 0~10.
+    목록에서 반올림/절삭된 경계 면적은 상세를 먼저 확인합니다. 불명확한 면적·층수는
+    needsVerification으로 분리합니다. 접근 제한·응답 변경은 오류로 반환합니다.
+    후보 문서나 자동화를 변경하지 않습니다. 사진은 get_studio_article로 조회하세요.
+    """
+    return json.dumps(search_studio(_client, district, monthly_rent_lt, min_area_pyeong,
+                                   max_area_pyeong, min_floor, deposit_max, limit, max_pages,
+                                   center_lat, center_lon, detail_limit), ensure_ascii=False, indent=1)
+
+
+@mcp.tool
+def get_article_detail(article_no: str) -> str:
+    """아파트·상가·사무실 등 개별 광고의 상세·전용면적·월세·공개 사진 URL 조회.
+
+    photoStatus가 available이면 공개 사진이 있고 not_published이면 API에 사진이
+    없습니다. 응답 형식 오류를 무사진이나 삭제된 매물로 추정하지 않습니다.
+    관리비 원문과 광고 확인일을 분리하며 음악 사용 허가는 확인하지 않습니다.
+    """
+    return json.dumps(fetch_article_detail(_client, article_no), ensure_ascii=False, indent=1)
+
+
+@mcp.tool
+def get_article_photos(article_no: str) -> str:
+    """모든 매물 유형의 공개 사진 URL과 명시적인 사진 상태를 조회합니다.
+
+    사진을 내려받거나 인증정보를 요구하지 않습니다. not_published는 정상 상세
+    응답에 빈 사진 목록이 있는 경우만 반환합니다. 네트워크·스키마 오류는 오류입니다.
+    """
+    item = fetch_article_detail(_client, article_no)
+    keys = ("articleNo", "propertyType", "link", "photoUrls", "photoStatus", "upstreamPhotoCount", "fetchedAt", "sourceEndpoint", "photoDownloadPerformed")
+    return json.dumps({key: item[key] for key in keys}, ensure_ascii=False, indent=1)
+
+
+@mcp.tool
+def get_studio_article(article_no: str) -> str:
+    """숫자 매물번호로 광고 상세·공개 사진 URL을 조회합니다.
+
+    광고 면적·월세·관리비 원문·준공·주차·엘리베이터를 반환합니다.
+    관리비 단위를 추정하거나 월세 총액을 확정하지 않습니다. 사진을 내려받지 않고
+    사용자 비교 면적·후보 상태·광고 확인일을 자동 갱신하지 않습니다.
+    """
+    return json.dumps(get_studio_detail(_client, article_no), ensure_ascii=False, indent=1)
+
+
+@mcp.tool
+def review_studio_articles(
+    articles: list[dict], monthly_rent_lt: float = 150,
+    min_area_pyeong: float = 15, max_area_pyeong: float = 25,
+    min_floor: int = 2, deposit_max: float | None = None,
+    center_lat: float | None = None, center_lon: float | None = None,
+) -> str:
+    """저장된 네이버 목록/상세 JSON을 같은 작업실 조건으로 검토합니다(외부 요청 없음).
+
+    최대 500개. matchingAdvertisements/needsVerification/excludedAdvertisements로
+    나눕니다. 저장본의 최신성은 확인하지 않습니다. 동일 광고번호만 중복 제거하며,
+    다른 광고번호가 같은 공간인지, 음악 작업이 허용되는지는 수동 확인이 필요합니다.
+    사용자가 정한 비교 면적과 기존 후보 문서를 덮어쓰지 않습니다.
+    """
+    payload = evaluate_articles(articles, monthly_rent_lt, min_area_pyeong, max_area_pyeong,
+                                min_floor, deposit_max, center_lat, center_lon)
+    return json.dumps({**payload, "liveLookupPerformed": False}, ensure_ascii=False, indent=1)
 
 
 @mcp.tool
@@ -114,12 +199,15 @@ def search_apartments(
         "complexesWithListings": meta["complexesTotal"],
         "truncated": truncated,
         "items": items[:limit],
+        "lookupFailures": meta.get("lookupFailures", 0),
     }
     if truncated:
         payload["note"] = (
             "매물 수 상위 단지부터 수집하다 한도에 도달해 일부만 반환했습니다. "
             "가격 범위를 좁히거나 동 단위로 지역을 좁혀 다시 검색하세요."
         )
+        if meta.get("lookupFailures"):
+            payload["note"] = "일부 단지의 API 조회가 실패해 부분 결과입니다. 매물 부재로 확정할 수 없습니다."
     return json.dumps(payload, ensure_ascii=False, indent=1)
 
 
