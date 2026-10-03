@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "naver-land",
-  "version": "0.3.1",
-  "description": "네이버 부동산 아파트·상가·사무실 검색과 광고 상세·공개 사진 조사",
+  "version": "0.3.2",
+  "description": "Npay 부동산 아파트·상가·사무실 검색과 광고 상세·공개 사진 조사",
   "author": {
     "name": "nearfield"
   },
@@ -17,7 +17,7 @@
   "extensions": {
     "com.openai": {
       "interface": {
-        "displayName": "네이버 부동산 조사",
+        "displayName": "Npay 부동산",
         "shortDescription": "아파트·상가·사무실 매물과 공개 사진 조사",
         "longDescription": "동 단위 매물을 검색하고 월세·전용면적·층수로 분류합니다. 광고 상세와 공개 사진 URL을 확인합니다. Desktop에서 로컬 실행하며 uv가 필요합니다. 개인 찜 목록과 로그인 정보는 읽지 않습니다.",
         "developerName": "nearfield",
