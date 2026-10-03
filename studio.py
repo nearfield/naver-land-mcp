@@ -223,10 +223,13 @@ def search_studio(
         "type": "list",
         "sameAddressGroup": "false",
         "rentPriceMin": 0,
-        "rentPriceMax": monthly_rent_lt,
+        # The upstream accepts integer manwon only (150.0 is rejected).
+        # Round outward so fractional caps do not hide eligible advertisements;
+        # evaluate_articles applies the exact strict/inclusive cap locally.
+        "rentPriceMax": math.ceil(monthly_rent_lt),
     }
     if deposit_max is not None:
-        params["priceMax"] = deposit_max
+        params["priceMax"] = math.ceil(deposit_max)
     # Do not server-filter supply area/floor/tag fields: exclusive area is evaluated locally.
     articles, more, pages_scanned = [], False, 0
     for page in range(1, max_pages + 1):

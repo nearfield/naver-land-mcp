@@ -25,6 +25,46 @@ def fixture(name):
 
 
 class ContractTests(unittest.TestCase):
+    def test_mcp_float_money_serializes_as_upstream_integer_manwon(self):
+        client = Mock()
+        client.resolve_region.return_value = {
+            "cortarNo": "1168010300", "cortarType": "sec",
+        }
+        client._get.return_value = {"articleList": [], "isMoreData": False}
+        search_studio(client, monthly_rent_lt=150.0, deposit_max=3000.0,
+                      detail_limit=0)
+        params = client._get.call_args.args[1]
+        query = requests.Request("GET", "https://example.test/articles",
+                                 params=params).prepare().url
+        self.assertIn("rentPriceMax=150&", query)
+        self.assertTrue(query.endswith("priceMax=3000&page=1"))
+        self.assertNotIn("150.0", query)
+        self.assertNotIn("3000.0", query)
+
+    def test_fractional_money_caps_preserve_eligible_ads_and_exact_local_limits(self):
+        client = Mock()
+        client.resolve_region.return_value = {
+            "cortarNo": "1168010300", "cortarType": "sec",
+        }
+        base = fixture("office_list")["articleList"][1]
+        rows = [
+            dict(base, articleNo="9000000011", rentPrc=149.5,
+                 dealOrWarrantPrc="3000.5"),
+            dict(base, articleNo="9000000012", rentPrc=149.9,
+                 dealOrWarrantPrc="3000.5"),
+            dict(base, articleNo="9000000013", rentPrc=149.5,
+                 dealOrWarrantPrc="3001"),
+        ]
+        client._get.return_value = {"articleList": rows, "isMoreData": False}
+        result = search_studio(client, monthly_rent_lt=149.9,
+                               deposit_max=3000.5, detail_limit=0)
+        params = client._get.call_args.args[1]
+        self.assertEqual(params["rentPriceMax"], 150)
+        self.assertEqual(params["priceMax"], 3001)
+        self.assertEqual([x["articleNo"] for x in result["matchingAdvertisements"]],
+                         ["9000000011"])
+        self.assertEqual(len(result["excludedAdvertisements"]), 2)
+
     def test_live_detail_field_casing_and_sources(self):
         item = normalize_article(fixture("office_detail"))
         self.assertEqual(item["propertyType"], "SMS")

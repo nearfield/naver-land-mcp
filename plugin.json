@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "naver-land",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Npay 부동산 아파트·상가·사무실 검색과 광고 상세·공개 사진 조사",
   "author": {
     "name": "nearfield"

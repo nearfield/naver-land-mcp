@@ -130,7 +130,21 @@ async def protocol_gates(report, args):
         studio = await call_json(
             client,
             "search_studio_spaces",
-            {"district": args.district, "limit": 10, "max_pages": 1, "detail_limit": 3},
+            {
+                "district": args.district,
+                # Explicit float inputs reproduce the MCP JSON coercion path;
+                # omitted integer defaults used to mask the upstream error.
+                "monthly_rent_lt": 150.0,
+                "min_area_pyeong": 15.0,
+                "max_area_pyeong": 25.0,
+                "min_floor": 2,
+                "deposit_max": 3000.0,
+                "limit": 100,
+                "max_pages": 3,
+                "detail_limit": 10,
+                "center_lat": 37.478,
+                "center_lon": 127.047,
+            },
         )
         assert studio["collected"] > 0, (
             "A live success requires actual listings, not an empty response"
@@ -148,6 +162,8 @@ async def protocol_gates(report, args):
             "collected": studio["collected"],
             "matchingCount": len(matches),
             "detailLookups": studio["detailLookups"],
+            "pagesScanned": studio["pagesScanned"],
+            "explicitFloatMoneyInputs": True,
             "truncated": studio["truncated"],
         }
         aid = matches[0]["articleNo"]
