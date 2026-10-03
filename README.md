@@ -26,6 +26,8 @@
 
 ## 설치와 로컬 실행
 
+조직 구성원에게 배포하려면 저장소의 `plugin.json`·`mcp.json`과 `.agents/plugins/marketplace.json`을 사용합니다. **네이버 부동산 조사** 플러그인은 Desktop에서 uv와 잠금 파일로 실행합니다. [조직 관리자 배포와 멤버 설치 안내](docs/organization-plugin.md).
+
 Python 3.10 이상을 사용합니다.
 
 ```sh

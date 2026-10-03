@@ -1,0 +1,28 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "naver-land",
+  "version": "0.3.0",
+  "description": "네이버 부동산 아파트·상가·사무실 검색과 광고 상세·공개 사진 조사",
+  "author": {"name": "nearfield"},
+  "repository": "https://github.com/nearfield/naver-land-mcp",
+  "license": "MIT",
+  "keywords": ["real-estate", "naver", "studio", "korea"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "네이버 부동산 조사",
+        "shortDescription": "아파트·상가·사무실 매물과 공개 사진 조사",
+        "longDescription": "동 단위 매물을 검색하고 월세·전용면적·층수로 분류합니다. 광고 상세와 공개 사진 URL을 확인합니다. Desktop에서 로컬 실행하며 uv가 필요합니다. 개인 찜 목록과 로그인 정보는 읽지 않습니다.",
+        "developerName": "nearfield",
+        "category": "Productivity",
+        "capabilities": ["Read"],
+        "websiteURL": "https://github.com/nearfield/naver-land-mcp",
+        "defaultPrompt": [
+          "개포동 상가·사무실 월세 매물을 검색하고 전용 15~25평, 지상 2층 이상, 월세 150만원 미만으로 검토해줘.",
+          "이 네이버 부동산 매물번호의 상세 조건과 공개 사진을 확인해줘.",
+          "원하는 동의 아파트 월세 광고를 찾아줘."
+        ]
+      }
+    }
+  }
+}

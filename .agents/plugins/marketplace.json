@@ -1,0 +1,12 @@
+{
+  "name": "nearfield-real-estate",
+  "interface": {"displayName": "Nearfield 부동산 도구"},
+  "plugins": [
+    {
+      "name": "naver-land",
+      "source": {"source": "local", "path": "./"},
+      "policy": {"installation": "AVAILABLE", "authentication": "ON_INSTALL"},
+      "category": "Productivity"
+    }
+  ]
+}

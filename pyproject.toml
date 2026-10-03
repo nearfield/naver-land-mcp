@@ -1,6 +1,6 @@
 [project]
 name = "naver-land-mcp"
-version = "0.2.0"
+version = "0.3.0"
 description = "Local Naver Real Estate MCP extension for office/store studio research and apartment listings"
 readme = "README.md"
 requires-python = ">=3.10"

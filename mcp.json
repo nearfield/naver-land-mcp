@@ -1,0 +1,14 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "naver-land": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "run", "--project", "${PLUGIN_ROOT}", "--frozen", "--no-dev",
+        "python", "${PLUGIN_ROOT}/stdio_server.py"
+      ],
+      "env": {"PYTHONUNBUFFERED": "1"}
+    }
+  }
+}

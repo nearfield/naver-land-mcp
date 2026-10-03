@@ -32,7 +32,7 @@ def check_publication(root: Path) -> dict:
     problems = []
     for relative in paths:
         path = root / relative
-        if path.suffix not in {".py", ".md", ".json", ".toml", ".txt", ".yml", ".yaml"}:
+        if path.suffix not in {".py", ".md", ".json", ".toml", ".txt", ".yml", ".yaml", ".lock"}:
             continue
         if not path.is_file():
             continue

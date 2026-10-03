@@ -44,7 +44,10 @@ def source_digest():
         + list((ROOT / "scripts").glob("*.py"))
         + list((ROOT / "tests").glob("*.py"))
         + list((ROOT / "tests/fixtures").glob("*.json"))
-        + [ROOT / "pyproject.toml", ROOT / "requirements.txt"]
+        + [ROOT / name for name in (
+            "pyproject.toml", "requirements.txt", "uv.lock", "plugin.json",
+            "mcp.json", ".agents/plugins/marketplace.json",
+        )]
     )
     for path in sorted(paths):
         digest.update(str(path.relative_to(ROOT)).encode())
