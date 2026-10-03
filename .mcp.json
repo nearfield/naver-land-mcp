@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "naver-land": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--project",
+        "${PLUGIN_ROOT}",
+        "--frozen",
+        "--no-dev",
+        "python",
+        "${PLUGIN_ROOT}/stdio_server.py"
+      ],
+      "env": {
+        "PYTHONUNBUFFERED": "1"
+      }
+    }
+  }
+}

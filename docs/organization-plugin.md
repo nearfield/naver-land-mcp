@@ -16,6 +16,8 @@
 
 GitHub 관리 배포는 기본적으로 매일 동기화하며, Admin → Plugins → Marketplaces → Sync now로 직접 갱신할 수 있습니다. 업데이트 후 오류가 있으면 이전 정상 버전을 유지하므로 동기화 결과를 확인합니다.
 
+단일 파일로 가져오는 관리 화면에서는 `.venv/bin/python scripts/package_plugin.py`로 만든 `.verification/naver-land-plugin.zip`을 사용합니다. 조직 게시 서버와의 호환을 위해 이 파일은 `.codex-plugin/plugin.json`·`.mcp.json` 형식의 단일 플러그인만 포함합니다. 저장소의 이식 가능한 `plugin.json`·`mcp.json`과 배포 목록은 ZIP에서 제외합니다. 두 MCP 설정의 실행 내용이 같은지는 자동 검증합니다.
+
 ## 멤버의 실행 준비
 
 1. [uv 공식 설치 안내](https://docs.astral.sh/uv/getting-started/installation/)에 따라 uv를 설치하고 앱 실행 환경에서 `uv` 명령을 찾을 수 있게 합니다. 관리 장비는 조직 관리자가 배포할 수 있습니다.

@@ -33,6 +33,11 @@ async def verify(root):
     assert (root / "uv.lock").is_file()
     config = json.loads((root / "mcp.json").read_text(encoding="utf-8"))
     server = config["mcpServers"]["naver-land"]
+    legacy = json.loads((root / ".mcp.json").read_text(encoding="utf-8"))
+    assert compatibility["mcpServers"] == "./.mcp.json"
+    assert legacy["mcpServers"]["naver-land"] == {
+        key: value for key, value in server.items() if key != "type"
+    }
     assert server["type"] == "stdio" and server["command"] == "uv"
     args = [arg.replace("${PLUGIN_ROOT}", str(root)) for arg in server["args"]]
     assert not any("${" in arg for arg in args)
